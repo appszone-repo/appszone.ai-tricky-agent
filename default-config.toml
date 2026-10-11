@@ -1,0 +1,76 @@
+# tricky-agent configuration.
+#
+# This file is OPTIONAL. Every value below is built into the binary as a default.
+# A `config.toml` next to the binary (or the path given with --config) is merged on
+# top of these defaults: set only what you want to change. Tables are merged key by
+# key; arrays (args, rules, ...) are replaced as a whole.
+# The file is re-read automatically when it changes (host/port need a restart).
+
+[server]
+host = "127.0.0.1"          # "0.0.0.0" exposes it to the network
+port = 8010
+# Static secret clients send as "Authorization: Bearer <key>" (the OpenAI SDK's api_key).
+# Auth is always on. If empty, a random key is generated and printed at every start.
+# Set it here, or with the TRICKY_API_KEY env var / --api-key flag, to keep it stable.
+api_key = ""
+log_capacity = 500          # how many recent requests GET /requests remembers (memory only)
+timeout_secs = 600          # hard limit for one agent run
+session_ttl_secs = 86400    # forget idle custom session ids after this long (0 = never)
+default_cwd = "~/.tricky-agent/agent"   # where agents work when a request has no "cwd" (created if missing)
+workspace_roots = []        # folders a request may use as `cwd`; empty = only default_cwd
+default_yolo = true         # pass the agent's yolo flags unless the request says "yolo": false
+
+# ---------------------------------------------------------------------------
+# Agents. The key (agents.<name>) is what clients send as `model`.
+#   command / windows_command  program to run (windows_command wins on Windows)
+#   args          argv template; {prompt} is replaced by the prompt
+#   prompt_via    "arg" (default) or "stdin" (also writes the prompt to stdin)
+#   resume_args   appended when continuing a session; {session} = agent's own id
+#   yolo_args     appended when yolo is on
+#   model_args    appended when the client picks a model ("<agent>/<model>"); {model} = it.
+#                 "<agent>/auto" (or just "<agent>") adds nothing: the agent's own default.
+#   models        names listed by /v1/models for this agent (any name still works)
+#   format        "ndjson" (JSON lines, parsed with `rules`) or "plain" (stdout = reply)
+#   enabled       set to false to remove a built-in agent
+#
+# A rule looks at one JSON line of the agent's output:
+#   when     all "<json pointer>" = "<value>" pairs must match
+#   require  all these json pointers must exist
+#   absent   none of these json pointers may exist
+#   text     pointer to a piece of reply text to stream to the client
+#   session  pointer to the agent's own session id
+#   prompt_tokens / completion_tokens   pointers to usage numbers
+# ---------------------------------------------------------------------------
+
+[agents.agent]              # Cursor Agent
+command = "agent"
+args = ["-p", "{prompt}", "--trust", "--output-format", "stream-json", "--stream-partial-output"]
+resume_args = ["--resume", "{session}"]
+yolo_args = ["--yolo"]
+model_args = ["--model", "{model}"]
+models = ["claude-opus-5-5-high", "claude-sonnet-5-5-high", "gpt-5.5-high"]
+format = "ndjson"
+rules = [
+  { when = { "/type" = "system", "/subtype" = "init" }, session = "/session_id" },
+  # Real deltas have timestamp_ms and no model_call_id. Two kinds of full-text
+  # repeats must be skipped: the final message (no timestamp_ms) and the recap sent
+  # before a tool call (has model_call_id).
+  { when = { "/type" = "assistant" }, require = ["/timestamp_ms"], absent = ["/model_call_id"], text = "/message/content/0/text" },
+  { when = { "/type" = "result" }, prompt_tokens = "/usage/inputTokens", completion_tokens = "/usage/outputTokens" },
+]
+
+[agents.cmd]                # Command Code
+# NOTE: on Windows a bare "cmd" resolves to cmd.exe. Set windows_command to the
+# real launcher (for example the full path to the Command Code executable).
+command = "cmd"
+args = ["-p", "{prompt}", "--trust", "--output-format", "json"]
+resume_args = ["--resume", "{session}"]
+yolo_args = ["--yolo"]
+model_args = ["--model", "{model}"]
+models = ["deepseek-v4-flash"]
+format = "ndjson"
+rules = [
+  { when = { "/type" = "event", "/event/type" = "run_start" }, session = "/event/sessionId" },
+  { when = { "/type" = "event", "/event/type" = "text_delta" }, text = "/event/delta" },
+  { when = { "/type" = "result" }, prompt_tokens = "/usage/inputTokens", completion_tokens = "/usage/outputTokens" },
+]

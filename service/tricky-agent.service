@@ -1,0 +1,33 @@
+# systemd SYSTEM service for a Linux server. Runs as an unprivileged user, NOT root:
+# the agents run with --yolo (they execute commands), so root would hand the whole
+# server to anyone who has the API key.
+# Installed by service/install-server.sh to /etc/systemd/system/tricky-agent.service
+
+[Unit]
+Description=tricky-agent: OpenAI-compatible API for local CLI coding agents
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tricky
+Group=tricky
+# Home of the service user = where `agent` and `cmd` keep their login and sessions.
+# The agents themselves work in ~/.tricky-agent/agent (= /var/lib/tricky-agent/.tricky-agent/agent),
+# the server's default_cwd; see workspace_roots in config.toml to allow other folders.
+WorkingDirectory=/var/lib/tricky-agent
+# TRICKY_API_KEY=... (root:tricky, mode 640)
+EnvironmentFile=/etc/tricky-agent/env
+# A service starts with a tiny PATH. ~/.local/bin is where Cursor's installer puts `agent`;
+# /usr/local/bin and /usr/bin cover `cmd` and node when installed with npm install -g.
+Environment=PATH=/var/lib/tricky-agent/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/opt/tricky-agent/tricky-agent --config /etc/tricky-agent/config.toml
+Restart=on-failure
+RestartSec=2
+TimeoutStopSec=10
+# Stopping the service also stops any agent processes it started (KillMode=control-group is the default).
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

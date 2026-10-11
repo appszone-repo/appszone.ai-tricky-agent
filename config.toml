@@ -1,0 +1,49 @@
+# tricky-agent configuration (optional file: merged over the defaults built into the binary).
+# Re-read automatically when saved, except host/port, which need a restart.
+# Full reference of every setting: default-config.toml and GUIDE.md.
+#
+# The secret key is NOT in this file. It is TRICKY_API_KEY in tricky-agent.env
+# (git-ignored, mode 600). Clients send it as: Authorization: Bearer <key>
+
+[server]
+host = "127.0.0.1"          # keep it on loopback; a tunnel (cloudflared/ngrok) can still reach it
+port = 8010
+timeout_secs = 600          # hard limit for one agent run
+session_ttl_secs = 86400    # forget idle custom session ids after 24h (agent-issued ids never expire)
+log_capacity = 500          # recent requests kept for GET /requests (memory only)
+default_yolo = true         # agents may edit files / run commands; a request can send "yolo": false
+
+# Where agents work when a request has no "cwd" (created if missing; "~" = the home of whoever runs the server).
+# A request's "cwd" may be relative to it, or absolute inside workspace_roots.
+# default_cwd = "~/.tricky-agent/agent"
+# Extra folders a request may use as "cwd". Empty = only default_cwd.
+# workspace_roots = ["/home/syedamirali/Desktop/Development"]
+
+# Models advertised by GET /v1/models. Any model the CLI accepts also works without being listed:
+# send "<agent>/<model>"; "<agent>/auto" uses the agent's own default. Full lists: GUIDE.md.
+[agents.agent]              # Cursor Agent
+models = [
+  "auto",                                       # always listed; Cursor picks the model
+  "composer-2.5", "composer-2.5-fast",
+  "cursor-grok-4.6-low", "cursor-grok-4.6-low-fast",
+  "cursor-grok-4.6-medium", "cursor-grok-4.6-medium-fast",
+  "cursor-grok-4.6-high", "cursor-grok-4.6-high-fast",
+  "cursor-grok-4.6-xhigh", "cursor-grok-4.6-xhigh-fast",
+  "cursor-grok-4.5-low", "cursor-grok-4.5-low-fast",
+  "cursor-grok-4.5-medium", "cursor-grok-4.5-medium-fast",
+  "cursor-grok-4.5-high", "cursor-grok-4.5-high-fast",
+  "claude-opus-5-5-high", "claude-opus-5-5-max", "claude-sonnet-5-5-high", "gpt-5.5-high",
+]
+
+[agents.cmd]                # Command Code
+models = ["deepseek/deepseek-v4-flash", "deepseek/deepseek-v4-pro"]
+
+# Add another CLI (no rebuild needed):
+# [agents.myagent]
+# command = "my-cli"
+# args = ["--prompt", "{prompt}"]
+# format = "plain"          # stdout is the answer
+#
+# Remove one:
+# [agents.agent]
+# enabled = false
