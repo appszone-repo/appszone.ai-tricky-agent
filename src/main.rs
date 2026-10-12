@@ -96,7 +96,7 @@ async fn run(cli: Cli) -> Result<(), String> {
     if key_generated {
         println!("key:    {}   (generated for this run; set TRICKY_API_KEY or server.api_key to keep it)", cfg.server.api_key);
     } else {
-        println!("key:    configured ({} chars), send it as: Authorization: Bearer <key>", cfg.server.api_key.len());
+        println!("key:    {} configured, send one as: Authorization: Bearer <key>", cfg.server.keys().len());
     }
     println!("cwd:    {} (default working folder for agents)", cfg.server.default_cwd.display());
     println!("log:    GET /requests (add ?format=text for a terminal-friendly view)");

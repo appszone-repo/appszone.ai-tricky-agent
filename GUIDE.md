@@ -50,6 +50,8 @@ SDK does with its `api_key`.
 |---|---|
 | `TRICKY_API_KEY=... ./tricky-agent` or `--api-key ...` | fixed key |
 | `api_key = "..."` under `[server]` in `config.toml` | fixed key |
+
+Several keys can be allowed at once by separating them with commas (`TRICKY_API_KEY=key-one,key-two`); any one of them authorises a request.
 | nothing set | a random `sk-ta-...` key is generated and **printed at start**, new on every run |
 
 `/health` is the only open endpoint. A tunnel forwards traffic from `127.0.0.1`, so the

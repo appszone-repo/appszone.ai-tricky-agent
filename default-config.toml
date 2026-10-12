@@ -12,6 +12,7 @@ port = 8010
 # Static secret clients send as "Authorization: Bearer <key>" (the OpenAI SDK's api_key).
 # Auth is always on. If empty, a random key is generated and printed at every start.
 # Set it here, or with the TRICKY_API_KEY env var / --api-key flag, to keep it stable.
+# Several keys can be accepted at once, separated by commas: "key-one,key-two".
 api_key = ""
 log_capacity = 500          # how many recent requests GET /requests remembers (memory only)
 timeout_secs = 600          # hard limit for one agent run

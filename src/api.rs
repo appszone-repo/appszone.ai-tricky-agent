@@ -148,16 +148,18 @@ impl IntoResponse for ApiError {
 }
 
 fn authorize(headers: &HeaderMap, cfg: &Config) -> Result<(), ApiError> {
-    let key = &cfg.server.api_key;
     let given = headers
         .get(header::AUTHORIZATION)
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.strip_prefix("Bearer "))
         .unwrap_or("");
-    // an empty key never authorises anything (fail closed); compare without early exit
-    let ok = !key.is_empty()
-        && given.len() == key.len()
-        && given.bytes().zip(key.bytes()).fold(0u8, |acc, (a, b)| acc | (a ^ b)) == 0;
+    // no configured key never authorises anything (fail closed); every key is compared without early exit
+    let mut ok = false;
+    for key in cfg.server.keys() {
+        let same = given.len() == key.len()
+            && given.bytes().zip(key.bytes()).fold(0u8, |acc, (a, b)| acc | (a ^ b)) == 0;
+        ok |= same;
+    }
     if ok {
         Ok(())
     } else {

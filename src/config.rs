@@ -108,6 +108,13 @@ impl AgentCfg {
     }
 }
 
+impl ServerCfg {
+    /// Accepted API keys: `api_key` may hold several, separated by commas.
+    pub fn keys(&self) -> Vec<&str> {
+        self.api_key.split(',').map(str::trim).filter(|k| !k.is_empty()).collect()
+    }
+}
+
 impl Config {
     /// Built-in defaults, with the optional user file merged on top.
     pub fn load(path: Option<&Path>, ov: &Overrides) -> Result<Config, String> {
